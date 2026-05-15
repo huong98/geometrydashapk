@@ -1,0 +1,162 @@
+// Hero section button interactions
+// document.addEventListener("DOMContentLoaded", function () {
+ // const installBtn = document.querySelector(".btn-install");
+ // if (installBtn) {
+   // installBtn.addEventListener("click", function () {
+    //  alert("Instructions on how to install will be shown here.");
+   // });
+ // }
+
+  // Accordion functionality
+  const accordionHeaders = document.querySelectorAll(".accordion-header");
+  accordionHeaders.forEach(function (header) {
+    header.addEventListener("click", function () {
+      const accordionItem = this.parentElement;
+      const isActive = accordionItem.classList.contains("active");
+
+      // Close all accordion items
+      document.querySelectorAll(".accordion-item").forEach(function (item) {
+        item.classList.remove("active");
+      });
+
+      // Toggle current item
+      if (!isActive) {
+        accordionItem.classList.add("active");
+      }
+    });
+  });
+
+  // FAQ accordion functionality
+  const faqQuestions = document.querySelectorAll(".faq-question");
+  faqQuestions.forEach(function (question) {
+    question.addEventListener("click", function () {
+      const faqItem = this.parentElement;
+      const isActive = faqItem.classList.contains("active");
+
+      // Close all FAQ items
+      document.querySelectorAll(".faq-item").forEach(function (item) {
+        item.classList.remove("active");
+      });
+
+      // Toggle current item
+      if (!isActive) {
+        faqItem.classList.add("active");
+      }
+    });
+  });
+
+  // Android FAQ accordion functionality
+  const androidFaqQuestions = document.querySelectorAll(
+    ".android-faq-question"
+  );
+  androidFaqQuestions.forEach(function (question) {
+    question.addEventListener("click", function () {
+      const faqItem = this.parentElement;
+      const isActive = faqItem.classList.contains("active");
+
+      // Close all Android FAQ items
+      document.querySelectorAll(".android-faq-item").forEach(function (item) {
+        item.classList.remove("active");
+      });
+
+      // Toggle current item
+      if (!isActive) {
+        faqItem.classList.add("active");
+      }
+    });
+  });
+
+  // PC FAQ accordion functionality
+  const pcFaqQuestions = document.querySelectorAll(".pc-faq-question");
+  pcFaqQuestions.forEach(function (question) {
+    question.addEventListener("click", function () {
+      const faqItem = this.parentElement;
+      const isActive = faqItem.classList.contains("active");
+
+      // Close all PC FAQ items
+      document.querySelectorAll(".pc-faq-item").forEach(function (item) {
+        item.classList.remove("active");
+      });
+
+      // Toggle current item
+      if (!isActive) {
+        faqItem.classList.add("active");
+      }
+    });
+  });
+
+  // iOS accordion functionality
+  const iosAccordionHeaders = document.querySelectorAll(
+    ".ios-accordion-header"
+  );
+  iosAccordionHeaders.forEach(function (header) {
+    header.addEventListener("click", function () {
+      const accordionItem = this.parentElement;
+      const isActive = accordionItem.classList.contains("active");
+
+      // Close all iOS accordion items
+      document.querySelectorAll(".ios-accordion-item").forEach(function (item) {
+        item.classList.remove("active");
+      });
+
+      // Toggle current item
+      if (!isActive) {
+        accordionItem.classList.add("active");
+      }
+    });
+  });
+
+  // iOS FAQ accordion functionality
+  const iosFaqQuestions = document.querySelectorAll(".ios-faq-question");
+  iosFaqQuestions.forEach(function (question) {
+    question.addEventListener("click", function () {
+      const faqItem = this.parentElement;
+      const isActive = faqItem.classList.contains("active");
+
+      // Close all iOS FAQ items
+      document.querySelectorAll(".ios-faq-item").forEach(function (item) {
+        item.classList.remove("active");
+      });
+
+      // Toggle current item
+      if (!isActive) {
+        faqItem.classList.add("active");
+      }
+    });
+  });
+
+  // Mobile menu toggle functionality
+  const mobileMenuToggle = document.querySelector(".mobile-menu-toggle");
+  const navMenu = document.querySelector(".nav-menu");
+
+  if (mobileMenuToggle && navMenu) {
+    mobileMenuToggle.addEventListener("click", function () {
+      this.classList.toggle("active");
+      navMenu.classList.toggle("active");
+    });
+
+    // Close menu when clicking on a link
+    const navLinks = document.querySelectorAll(".nav-link");
+    navLinks.forEach(function (link) {
+      link.addEventListener("click", function () {
+        mobileMenuToggle.classList.remove("active");
+        navMenu.classList.remove("active");
+      });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener("click", function (event) {
+      const isClickInsideNav = navMenu.contains(event.target);
+      const isClickOnToggle = mobileMenuToggle.contains(event.target);
+
+      if (
+        !isClickInsideNav &&
+        !isClickOnToggle &&
+        navMenu.classList.contains("active")
+      ) {
+        mobileMenuToggle.classList.remove("active");
+        navMenu.classList.remove("active");
+      }
+    });
+  }
+});

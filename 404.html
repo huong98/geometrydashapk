@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level Not Found - 404 Error | GeometryDashAPK.Games</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pusab&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gd-blue: #00eeff;
+            --gd-bg: #1a1a1a;
+            --gd-floor: #005a63;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Arial', sans-serif;
+            background-color: var(--gd-bg);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+        }
+
+        /* Hiệu ứng khối vuông nhảy */
+        .cube {
+            width: 60px;
+            height: 60px;
+            background-color: #00ff00;
+            border: 4px solid #000;
+            margin: 0 auto 20px;
+            position: relative;
+            animation: jump 0.6s infinite alternate cubic-bezier(0.5, 0.05, 1, 0.5);
+        }
+
+        .cube:after {
+            content: "O O";
+            font-weight: bold;
+            color: black;
+            font-size: 20px;
+            display: block;
+            margin-top: 10px;
+        }
+
+        @keyframes jump {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(90deg); }
+        }
+
+        h1 {
+            font-size: 80px;
+            margin: 0;
+            color: var(--gd-blue);
+            text-shadow: 4px 4px #000;
+        }
+
+        p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #ff9d00;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            border-bottom: 5px solid #b36e00;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            background-color: #ffae00;
+        }
+
+        /* Hiệu ứng gai nhọn bên dưới */
+        .spikes {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background-image: linear-gradient(45deg, #333 25%, transparent 25%), 
+                              linear-gradient(-45deg, #333 25%, transparent 25%);
+            background-size: 50px 100px;
+        }
+
+        .floor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 20px;
+            background-color: var(--gd-floor);
+            box-shadow: 0 -10px 20px rgba(0, 238, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+    <div class="cube"></div>
+    <h1>404</h1>
+    <p>Oops! You crashed into an obstacle. This level doesn't exist!</p>
+    <a href="https://geometrydashapk.games" class="btn">Retry (Back to Home)</a>
+</div>
+
+    <div class="spikes"></div>
+    <div class="floor"></div>
+
+</body>
+</html>
