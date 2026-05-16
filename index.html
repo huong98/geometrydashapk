@@ -1771,6 +1771,60 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- Link to JavaScript file -->
     <script src="./Home/script.js.download?v=20260516-faq"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var faqAccordion = document.querySelector(".faq-accordion");
+
+        if (!faqAccordion) {
+          return;
+        }
+
+        function closeFaqItem(item) {
+          var answer = item.querySelector(".faq-answer");
+          item.classList.remove("active");
+
+          if (answer) {
+            answer.style.maxHeight = "0";
+            answer.style.paddingTop = "0";
+            answer.style.paddingBottom = "0";
+          }
+        }
+
+        function openFaqItem(item) {
+          var answer = item.querySelector(".faq-answer");
+          item.classList.add("active");
+
+          if (answer) {
+            answer.style.maxHeight = answer.scrollHeight + "px";
+            answer.style.paddingTop = "0";
+            answer.style.paddingBottom = "1.5rem";
+          }
+        }
+
+        document.querySelectorAll(".faq-item").forEach(function (item) {
+          closeFaqItem(item);
+        });
+
+        faqAccordion.addEventListener("click", function (event) {
+          var question = event.target.closest(".faq-question");
+
+          if (!question || !faqAccordion.contains(question)) {
+            return;
+          }
+
+          var currentItem = question.closest(".faq-item");
+          var isActive = currentItem.classList.contains("active");
+
+          document.querySelectorAll(".faq-item").forEach(function (item) {
+            closeFaqItem(item);
+          });
+
+          if (!isActive) {
+            openFaqItem(currentItem);
+          }
+        });
+      });
+    </script>
   <script defer="" src="./Home/v67327c56f0bb4ef8b305cae61679db8f1769101564043" integrity="sha512-rdcWY47ByXd76cbCFzznIcEaCN71jqkWBBqlwhF1SY7KubdLKZiEGeP7AyieKZlGP9hbY/MhGrwXzJC/HulNyg==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;31519d0f5d1843d59191826b047bbc4d&quot;,&quot;r&quot;:1,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
 
 
