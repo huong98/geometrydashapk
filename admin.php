@@ -205,7 +205,7 @@ function blog_template($title, $description, $category, $contentHtml) {
   <meta name="description" content="' . $descriptionEsc . '">
   <title>' . $titleEsc . '</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="../Blog/style.css">
+  <link rel="stylesheet" href="../Blog/style.css?v=20260516-blog-colors">
 </head>
 <body>
   <header>

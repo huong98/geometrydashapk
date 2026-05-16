@@ -10114,12 +10114,20 @@ h3 a:hover {
   text-decoration: none;
 }
 /* Admin-generated blog post readability */
+.blog-section article.blog-card-content {
+  color: #f8fafc !important;
+}
+
+.blog-section article.blog-card-content * {
+  color: inherit !important;
+}
+
 .blog-section article.blog-card-content,
 .blog-section article.blog-card-content p,
 .blog-section article.blog-card-content li,
 .blog-section article.blog-card-content span,
 .blog-section article.blog-card-content div {
-  color: #fff;
+  color: #f8fafc !important;
 }
 
 .blog-section article.blog-card-content h1,
@@ -10129,16 +10137,23 @@ h3 a:hover {
 .blog-section article.blog-card-content h5,
 .blog-section article.blog-card-content h6,
 .blog-section article.blog-card-content strong {
-  color: #fff;
+  color: #ffffff !important;
 }
 
 .blog-section article.blog-card-content a {
-  color: #ffcc3f;
-  text-decoration: underline;
+  color: #ffcc3f !important;
+  text-decoration: underline !important;
   text-underline-offset: 3px;
-  font-weight: 700;
+  font-weight: 700 !important;
 }
 
 .blog-section article.blog-card-content a:hover {
-  color: #fbbf24;
+  color: #fbbf24 !important;
+}
+
+.blog-section article.blog-card-content ul,
+.blog-section article.blog-card-content ol,
+.blog-section article.blog-card-content blockquote,
+.blog-section article.blog-card-content em {
+  color: #f8fafc !important;
 }
