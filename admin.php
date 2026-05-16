@@ -11,6 +11,46 @@ function h($value) {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function editor_toolbar() {
+    return '
+                <div class="wp-editor-top">
+                  <button class="btn add-media" type="button" data-action="image">Add Media</button>
+                  <div class="wp-editor-tabs">
+                    <button class="wp-tab active" type="button">Visual</button>
+                    <button class="wp-tab" type="button" data-action="source">HTML</button>
+                  </div>
+                </div>
+                <div class="editor-toolbar" data-toolbar>
+                  <button class="tool wide" type="button" data-action="source">Source</button>
+                  <button class="tool" type="button" data-cmd="undo">Undo</button>
+                  <button class="tool" type="button" data-cmd="redo">Redo</button>
+                  <button class="tool wide" type="button" data-format="p">Normal</button>
+                  <button class="tool" type="button" data-format="h2">H2</button>
+                  <button class="tool" type="button" data-format="h3">H3</button>
+                  <button class="tool" type="button" data-cmd="bold">B</button>
+                  <button class="tool" type="button" data-cmd="italic">I</button>
+                  <button class="tool" type="button" data-cmd="underline">U</button>
+                  <button class="tool" type="button" data-cmd="strikeThrough">S</button>
+                  <button class="tool" type="button" data-cmd="subscript">x2</button>
+                  <button class="tool" type="button" data-cmd="superscript">x^2</button>
+                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
+                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
+                  <button class="tool" type="button" data-cmd="outdent">Out</button>
+                  <button class="tool" type="button" data-cmd="indent">In</button>
+                  <button class="tool" type="button" data-format="blockquote">Quote</button>
+                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
+                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
+                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
+                  <button class="tool" type="button" data-action="link">Link</button>
+                  <button class="tool" type="button" data-cmd="unlink">Unlink</button>
+                  <button class="tool" type="button" data-action="image">Img</button>
+                  <button class="tool" type="button" data-action="foreColor">Text</button>
+                  <button class="tool" type="button" data-action="backColor">Bg</button>
+                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
+                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
+                </div>';
+}
+
 function slugify($text) {
     $text = strtolower(trim($text));
     $text = preg_replace('/[^a-z0-9]+/', '-', $text);
@@ -627,13 +667,27 @@ if ($loggedIn && $editBlog) {
     input,textarea,select { border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); min-height:40px; padding:9px 11px; outline:none; width:100%; }
     textarea.code { min-height:620px; font-family:Consolas,Monaco,monospace; font-size:13px; line-height:1.45; white-space:pre; }
     textarea.body { min-height:240px; }
-    .editor-toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:10px; border:1px solid var(--line); border-bottom:0; border-radius:8px 8px 0 0; background:#f8fafc; }
-    .tool { min-width:34px; height:34px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; font-weight:700; }
+    .wp-post-shell { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; }
+    .wp-title-input { min-height:46px; border-radius:2px; font-size:24px; padding:8px 12px; background:#fff; }
+    .wp-editor-top { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:8px; }
+    .add-media { width:auto; min-height:34px; border-radius:3px; background:#f6f7f7; }
+    .wp-editor-tabs { display:flex; align-items:flex-end; gap:4px; }
+    .wp-tab { border:1px solid var(--line); border-bottom:0; background:#f6f7f7; min-height:32px; padding:6px 12px; cursor:pointer; border-radius:3px 3px 0 0; color:#334155; }
+    .wp-tab.active { background:#fff; color:#111827; }
+    .editor-toolbar { display:flex; flex-wrap:wrap; gap:4px; padding:8px; border:1px solid var(--line); border-bottom:0; border-radius:3px 0 0 0; background:#eef0f2; }
+    .tool { min-width:32px; height:30px; border:1px solid #b8c0cc; background:#fff; border-radius:3px; cursor:pointer; font-weight:700; color:#1f2933; padding:0 8px; }
+    .tool.wide { min-width:64px; }
     .tool select { min-height:34px; border:0; padding:0 8px; background:#fff; }
-    .wysiwyg { min-height:420px; border:1px solid var(--line); border-radius:0 0 8px 8px; background:#fff; padding:18px; outline:none; overflow:auto; }
+    .wysiwyg { min-height:520px; border:1px solid var(--line); border-radius:0; background:#fff; padding:18px; outline:none; overflow:auto; font-size:16px; }
     .wysiwyg:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(245,180,0,.18); }
     .wysiwyg h1,.wysiwyg h2,.wysiwyg h3 { margin-top:0.85em; }
     .wysiwyg img { max-width:100%; height:auto; }
+    .source-editor { display:none; min-height:520px; border-radius:0; font-family:Consolas,Monaco,monospace; font-size:13px; line-height:1.45; white-space:pre; }
+    .editor-source-mode .wysiwyg { display:none; }
+    .editor-source-mode .source-editor { display:block; }
+    .publish-box .panel-body { display:grid; gap:12px; }
+    .publish-row { color:var(--muted); font-size:13px; display:flex; justify-content:space-between; gap:10px; }
+    .publish-row strong { color:var(--text); }
     .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
@@ -642,7 +696,7 @@ if ($loggedIn && $editBlog) {
     .error { border-color:#fecaca; background:#fee2e2; color:#991b1b; }
     .hint { color:var(--muted); font-size:13px; margin-top:6px; }
     .mobile-menu { display:none; }
-    @media (max-width:1100px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-2 { grid-template-columns:1fr; } }
+    @media (max-width:1100px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-2,.wp-post-shell { grid-template-columns:1fr; } }
     @media (max-width:820px) { .shell { grid-template-columns:1fr; } .sidebar { position:fixed; inset:0 auto 0 0; width:280px; transform:translateX(-102%); transition:.2s; z-index:20; } .sidebar.open { transform:translateX(0); } .mobile-menu { display:inline-flex; } .topbar,.section-title { align-items:flex-start; flex-direction:column; } .actions,.btn { width:100%; } .content { padding:20px 16px 34px; } }
     @media (max-width:580px) { .grid { grid-template-columns:1fr; } }
   </style>
@@ -803,40 +857,32 @@ if ($loggedIn && $editBlog) {
             <button class="btn primary" type="button" data-tab="visualPage">Soan thao</button>
             <button class="btn" type="button" data-tab="rawPage">Sua HTML goc</button>
           </div>
-          <form class="panel tab-panel active" id="visualPage" method="post" data-editor-form>
+          <form class="tab-panel active" id="visualPage" method="post" data-editor-form>
+            <div class="wp-post-shell">
+            <div class="panel">
             <div class="panel-body">
               <input type="hidden" name="action" value="save_page_content">
               <input type="hidden" name="filename" value="<?= h($editPage) ?>">
               <input type="hidden" name="content" class="editor-output">
-              <div class="field"><label for="pageTitleEdit">Meta title</label><input id="pageTitleEdit" name="title" value="<?= h($pageTitle) ?>"></div>
+              <div class="field"><input class="wp-title-input" id="pageTitleEdit" name="title" value="<?= h($pageTitle) ?>" placeholder="Enter title here"></div>
               <div class="field"><label for="pageDescriptionEdit">Meta description</label><textarea id="pageDescriptionEdit" name="description"><?= h($pageDescription) ?></textarea></div>
-              <div class="field">
-                <label>Noi dung trang</label>
-                <div class="editor-toolbar" data-toolbar>
-                  <button class="tool" type="button" data-cmd="bold">B</button>
-                  <button class="tool" type="button" data-cmd="italic">I</button>
-                  <button class="tool" type="button" data-cmd="underline">U</button>
-                  <button class="tool" type="button" data-format="p">P</button>
-                  <button class="tool" type="button" data-format="h1">H1</button>
-                  <button class="tool" type="button" data-format="h2">H2</button>
-                  <button class="tool" type="button" data-format="h3">H3</button>
-                  <button class="tool" type="button" data-format="blockquote">Quote</button>
-                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
-                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
-                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
-                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
-                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
-                  <button class="tool" type="button" data-action="link">Link</button>
-                  <button class="tool" type="button" data-action="image">Img</button>
-                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
-                  <button class="tool" type="button" data-cmd="undo">Undo</button>
-                  <button class="tool" type="button" data-cmd="redo">Redo</button>
-                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
-                </div>
+              <div class="field wp-editor-wrap">
+                <?= editor_toolbar() ?>
                 <div class="wysiwyg" contenteditable="true"><?= $pageMain ?></div>
+                <textarea class="source-editor" spellcheck="false"><?= h($pageMain) ?></textarea>
               </div>
-              <button class="btn primary" type="submit">Luu noi dung</button>
-              <a class="btn" href="?section=pages">Quay lai</a>
+            </div>
+            </div>
+            <aside class="panel publish-box">
+              <div class="panel-head"><h3>Publish</h3></div>
+              <div class="panel-body">
+                <div class="publish-row"><span>Status</span><strong>Published</strong></div>
+                <div class="publish-row"><span>Visibility</span><strong>Public</strong></div>
+                <div class="publish-row"><span>File</span><strong><?= h($editPage) ?></strong></div>
+                <button class="btn primary" type="submit">Update</button>
+                <a class="btn" href="?section=pages">Back</a>
+              </div>
+            </aside>
             </div>
           </form>
           <form class="panel tab-panel" id="rawPage" method="post">
@@ -857,41 +903,32 @@ if ($loggedIn && $editBlog) {
           <div class="section-title">
             <div><h2>Them chuyen muc / trang moi</h2><p>Tao file HTML moi o thu muc goc website va co the them vao menu.</p></div>
           </div>
-          <form class="panel" method="post" data-editor-form>
+          <form method="post" data-editor-form>
+            <div class="wp-post-shell">
+            <div class="panel">
             <div class="panel-body">
               <input type="hidden" name="action" value="create_page">
               <input type="hidden" name="content" class="editor-output">
-              <div class="field"><label for="pageTitle">Tieu de</label><input id="pageTitle" name="title" required></div>
+              <div class="field"><input class="wp-title-input" id="pageTitle" name="title" required placeholder="Enter title here"></div>
               <div class="field"><label for="pageSlug">Slug URL</label><input id="pageSlug" name="slug" placeholder="vi-du: download-guide"></div>
               <div class="field"><label for="pageDescription">Meta description</label><textarea id="pageDescription" name="description" required></textarea></div>
               <div class="field"><label for="menuLabel">Ten hien thi tren menu</label><input id="menuLabel" name="menu_label" placeholder="Mac dinh lay theo tieu de"></div>
               <div class="field"><label><input type="checkbox" name="add_to_menu" value="1" checked> Them vao menu cac trang public</label></div>
-              <div class="field">
-                <label>Noi dung</label>
-                <div class="editor-toolbar" data-toolbar>
-                  <button class="tool" type="button" data-cmd="bold">B</button>
-                  <button class="tool" type="button" data-cmd="italic">I</button>
-                  <button class="tool" type="button" data-cmd="underline">U</button>
-                  <button class="tool" type="button" data-format="p">P</button>
-                  <button class="tool" type="button" data-format="h1">H1</button>
-                  <button class="tool" type="button" data-format="h2">H2</button>
-                  <button class="tool" type="button" data-format="h3">H3</button>
-                  <button class="tool" type="button" data-format="blockquote">Quote</button>
-                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
-                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
-                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
-                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
-                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
-                  <button class="tool" type="button" data-action="link">Link</button>
-                  <button class="tool" type="button" data-action="image">Img</button>
-                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
-                  <button class="tool" type="button" data-cmd="undo">Undo</button>
-                  <button class="tool" type="button" data-cmd="redo">Redo</button>
-                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
-                </div>
+              <div class="field wp-editor-wrap">
+                <?= editor_toolbar() ?>
                 <div class="wysiwyg" contenteditable="true"><h2>Tieu de section</h2><p>Nhap noi dung cua ban tai day.</p></div>
+                <textarea class="source-editor" spellcheck="false"><h2>Tieu de section</h2><p>Nhap noi dung cua ban tai day.</p></textarea>
               </div>
-              <button class="btn primary" type="submit">Tao chuyen muc</button>
+            </div>
+            </div>
+            <aside class="panel publish-box">
+              <div class="panel-head"><h3>Publish</h3></div>
+              <div class="panel-body">
+                <div class="publish-row"><span>Status</span><strong>Draft</strong></div>
+                <div class="publish-row"><span>Visibility</span><strong>Public</strong></div>
+                <button class="btn primary" type="submit">Publish</button>
+              </div>
+            </aside>
             </div>
           </form>
         <?php endif; ?>
@@ -942,40 +979,32 @@ if ($loggedIn && $editBlog) {
             <button class="btn primary" type="button" data-tab="visualBlog">Soan thao</button>
             <button class="btn" type="button" data-tab="rawBlog">Sua HTML goc</button>
           </div>
-          <form class="panel tab-panel active" id="visualBlog" method="post" data-editor-form>
+          <form class="tab-panel active" id="visualBlog" method="post" data-editor-form>
+            <div class="wp-post-shell">
+            <div class="panel">
             <div class="panel-body">
               <input type="hidden" name="action" value="save_blog_content">
               <input type="hidden" name="filename" value="<?= h($editBlog) ?>">
               <input type="hidden" name="content" class="editor-output">
-              <div class="field"><label for="blogTitleEdit">Meta title</label><input id="blogTitleEdit" name="title" value="<?= h($blogTitle) ?>"></div>
+              <div class="field"><input class="wp-title-input" id="blogTitleEdit" name="title" value="<?= h($blogTitle) ?>" placeholder="Enter title here"></div>
               <div class="field"><label for="blogDescriptionEdit">Meta description</label><textarea id="blogDescriptionEdit" name="description"><?= h($blogDescription) ?></textarea></div>
-              <div class="field">
-                <label>Noi dung bai viet</label>
-                <div class="editor-toolbar" data-toolbar>
-                  <button class="tool" type="button" data-cmd="bold">B</button>
-                  <button class="tool" type="button" data-cmd="italic">I</button>
-                  <button class="tool" type="button" data-cmd="underline">U</button>
-                  <button class="tool" type="button" data-format="p">P</button>
-                  <button class="tool" type="button" data-format="h1">H1</button>
-                  <button class="tool" type="button" data-format="h2">H2</button>
-                  <button class="tool" type="button" data-format="h3">H3</button>
-                  <button class="tool" type="button" data-format="blockquote">Quote</button>
-                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
-                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
-                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
-                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
-                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
-                  <button class="tool" type="button" data-action="link">Link</button>
-                  <button class="tool" type="button" data-action="image">Img</button>
-                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
-                  <button class="tool" type="button" data-cmd="undo">Undo</button>
-                  <button class="tool" type="button" data-cmd="redo">Redo</button>
-                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
-                </div>
+              <div class="field wp-editor-wrap">
+                <?= editor_toolbar() ?>
                 <div class="wysiwyg" contenteditable="true"><?= $blogMain ?></div>
+                <textarea class="source-editor" spellcheck="false"><?= h($blogMain) ?></textarea>
               </div>
-              <button class="btn primary" type="submit">Luu bai blog</button>
-              <a class="btn" href="?section=blogs">Quay lai</a>
+            </div>
+            </div>
+            <aside class="panel publish-box">
+              <div class="panel-head"><h3>Publish</h3></div>
+              <div class="panel-body">
+                <div class="publish-row"><span>Status</span><strong>Published</strong></div>
+                <div class="publish-row"><span>Visibility</span><strong>Public</strong></div>
+                <div class="publish-row"><span>File</span><strong><?= h($editBlog) ?></strong></div>
+                <button class="btn primary" type="submit">Update</button>
+                <a class="btn" href="?section=blogs">Back</a>
+              </div>
+            </aside>
             </div>
           </form>
           <form class="panel tab-panel" id="rawBlog" method="post">
@@ -996,40 +1025,31 @@ if ($loggedIn && $editBlog) {
           <div class="section-title">
             <div><h2>Them bai blog</h2><p>Tao file bai viet va chen card vao trang blog.</p></div>
           </div>
-          <form class="panel" method="post" data-editor-form>
+          <form method="post" data-editor-form>
+            <div class="wp-post-shell">
+            <div class="panel">
             <div class="panel-body">
               <input type="hidden" name="action" value="create_blog">
               <input type="hidden" name="content" class="editor-output">
-              <div class="field"><label for="blogTitle">Tieu de</label><input id="blogTitle" name="title" required></div>
+              <div class="field"><input class="wp-title-input" id="blogTitle" name="title" required placeholder="Enter title here"></div>
               <div class="field"><label for="blogSlug">Slug URL</label><input id="blogSlug" name="slug" placeholder="vi-du: geometry-dash-tips"></div>
               <div class="field"><label for="blogCategory">Chuyen muc</label><input id="blogCategory" name="category" value="Guide"></div>
               <div class="field"><label for="blogExcerpt">Mo ta ngan</label><textarea id="blogExcerpt" name="excerpt" required></textarea></div>
-              <div class="field">
-                <label>Noi dung bai viet</label>
-                <div class="editor-toolbar" data-toolbar>
-                  <button class="tool" type="button" data-cmd="bold">B</button>
-                  <button class="tool" type="button" data-cmd="italic">I</button>
-                  <button class="tool" type="button" data-cmd="underline">U</button>
-                  <button class="tool" type="button" data-format="p">P</button>
-                  <button class="tool" type="button" data-format="h1">H1</button>
-                  <button class="tool" type="button" data-format="h2">H2</button>
-                  <button class="tool" type="button" data-format="h3">H3</button>
-                  <button class="tool" type="button" data-format="blockquote">Quote</button>
-                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
-                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
-                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
-                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
-                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
-                  <button class="tool" type="button" data-action="link">Link</button>
-                  <button class="tool" type="button" data-action="image">Img</button>
-                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
-                  <button class="tool" type="button" data-cmd="undo">Undo</button>
-                  <button class="tool" type="button" data-cmd="redo">Redo</button>
-                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
-                </div>
+              <div class="field wp-editor-wrap">
+                <?= editor_toolbar() ?>
                 <div class="wysiwyg" contenteditable="true"><h2>Heading</h2><p>Noi dung bai viet...</p></div>
+                <textarea class="source-editor" spellcheck="false"><h2>Heading</h2><p>Noi dung bai viet...</p></textarea>
               </div>
-              <button class="btn primary" type="submit">Dang bai blog</button>
+            </div>
+            </div>
+            <aside class="panel publish-box">
+              <div class="panel-head"><h3>Publish</h3></div>
+              <div class="panel-body">
+                <div class="publish-row"><span>Status</span><strong>Draft</strong></div>
+                <div class="publish-row"><span>Visibility</span><strong>Public</strong></div>
+                <button class="btn primary" type="submit">Publish</button>
+              </div>
+            </aside>
             </div>
           </form>
         <?php endif; ?>
@@ -1099,7 +1119,9 @@ if ($loggedIn && $editBlog) {
       toolbar.addEventListener('click', (event) => {
         const button = event.target.closest('button');
         if (!button) return;
-        const editor = toolbar.parentElement.querySelector('.wysiwyg');
+        const wrap = toolbar.closest('.wp-editor-wrap') || toolbar.parentElement;
+        const editor = wrap.querySelector('.wysiwyg');
+        const source = wrap.querySelector('.source-editor');
         if (!editor) return;
         editor.focus();
 
@@ -1120,15 +1142,77 @@ if ($loggedIn && $editBlog) {
           const url = prompt('Nhap URL anh:');
           if (url) document.execCommand('insertImage', false, url);
         }
+
+        if (button.dataset.action === 'foreColor') {
+          const color = prompt('Nhap ma mau chu, vi du #ffcc3f:');
+          if (color) document.execCommand('foreColor', false, color);
+        }
+
+        if (button.dataset.action === 'backColor') {
+          const color = prompt('Nhap ma mau nen, vi du #fff3cd:');
+          if (color) document.execCommand('backColor', false, color);
+        }
+
+        if (button.dataset.action === 'source' && source) {
+          source.value = editor.innerHTML.trim();
+          wrap.classList.toggle('editor-source-mode');
+          const isSource = wrap.classList.contains('editor-source-mode');
+          wrap.querySelectorAll('.wp-tab').forEach((tab) => tab.classList.toggle('active', !isSource));
+          const htmlTab = wrap.querySelector('.wp-tab[data-action="source"]');
+          if (htmlTab) htmlTab.classList.toggle('active', isSource);
+        }
+      });
+    });
+
+    document.querySelectorAll('.add-media').forEach((button) => {
+      button.addEventListener('click', () => {
+        const wrap = button.closest('.wp-editor-wrap');
+        const editor = wrap ? wrap.querySelector('.wysiwyg') : null;
+        const url = prompt('Nhap URL anh/media:');
+        if (editor && url) {
+          editor.focus();
+          document.execCommand('insertImage', false, url);
+        }
+      });
+    });
+
+    document.querySelectorAll('.wp-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const wrap = tab.closest('.wp-editor-wrap');
+        if (!wrap) return;
+        const editor = wrap.querySelector('.wysiwyg');
+        const source = wrap.querySelector('.source-editor');
+        if (!editor || !source) return;
+        const sourceMode = tab.dataset.action === 'source';
+        if (sourceMode) {
+          source.value = editor.innerHTML.trim();
+        } else {
+          editor.innerHTML = source.value;
+        }
+        wrap.classList.toggle('editor-source-mode', sourceMode);
+        wrap.querySelectorAll('.wp-tab').forEach((item) => item.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+
+    document.querySelectorAll('.source-editor').forEach((source) => {
+      source.addEventListener('input', () => {
+        const wrap = source.closest('.wp-editor-wrap');
+        const editor = wrap ? wrap.querySelector('.wysiwyg') : null;
+        if (editor) editor.innerHTML = source.value;
       });
     });
 
     document.querySelectorAll('[data-editor-form]').forEach((form) => {
       form.addEventListener('submit', () => {
         const editor = form.querySelector('.wysiwyg');
+        const wrap = form.querySelector('.wp-editor-wrap');
+        const source = form.querySelector('.source-editor');
         const output = form.querySelector('.editor-output');
         if (editor && output) {
-          output.value = editor.innerHTML.trim();
+          output.value = wrap && wrap.classList.contains('editor-source-mode') && source
+            ? source.value.trim()
+            : editor.innerHTML.trim();
         }
       });
     });
