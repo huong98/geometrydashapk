@@ -241,6 +241,22 @@ function insert_blog_card($slug, $title, $category, $excerpt) {
     return file_put_contents($blogIndex, $html) !== false;
 }
 
+function remove_blog_card($slug) {
+    global $baseDir;
+    $blogIndex = $baseDir . DIRECTORY_SEPARATOR . 'blog.html';
+    if (!is_file($blogIndex) || !is_writable($blogIndex)) {
+        return false;
+    }
+    $html = file_get_contents($blogIndex);
+    $pattern = '/\s*<article\s+class="blog-card">\s*<a\s+href=["\']\.\/blog\/' . preg_quote($slug, '/') . '["\']\s+class="blog-card-link">.*?<\/a>\s*<\/article>/is';
+    $updated = preg_replace($pattern, '', $html, 1, $count);
+    if ($count > 0) {
+        backup_file($blogIndex);
+        return file_put_contents($blogIndex, $updated) !== false;
+    }
+    return true;
+}
+
 function backup_file($path) {
     global $baseDir;
     if (!is_file($path)) {
@@ -413,6 +429,35 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
             backup_file($baseDir . DIRECTORY_SEPARATOR . 'blog.html');
             insert_blog_card($slug, $title, $category, $excerpt);
             $message = 'Da tao bai blog moi va them vao blog.html: ' . $slug . '.html';
+        }
+    }
+
+    if ($action === 'delete_page') {
+        $filename = basename((string) ($_POST['filename'] ?? ''));
+        $protected = ['index.html', 'blog.html', 'admin.html', '404.html'];
+        $path = safe_root_html_path($filename);
+        if (in_array($filename, $protected, true)) {
+            $error = 'Khong the xoa trang he thong: ' . $filename;
+        } elseif (!$path || !is_writable($path)) {
+            $error = 'Khong the xoa trang nay.';
+        } else {
+            backup_file($path);
+            unlink($path);
+            $message = 'Da xoa trang ' . $filename . '.';
+        }
+    }
+
+    if ($action === 'delete_blog') {
+        $filename = basename((string) ($_POST['filename'] ?? ''));
+        $path = safe_blog_html_path($filename);
+        if (!$path || !is_writable($path)) {
+            $error = 'Khong the xoa bai blog nay.';
+        } else {
+            $slug = preg_replace('/\.html$/i', '', $filename);
+            backup_file($path);
+            unlink($path);
+            remove_blog_card($slug);
+            $message = 'Da xoa bai blog ' . $filename . ' va go card khoi blog.html.';
         }
     }
 }
@@ -607,7 +652,18 @@ if ($loggedIn && $editBlog) {
                         <td><a href="<?= h($page['url']) ?>" target="_blank"><?= h($page['url']) ?></a></td>
                         <td><?= number_format($page['size']) ?> bytes</td>
                         <td><?= h($page['updated']) ?></td>
-                        <td><a class="btn" href="?edit_page=<?= urlencode($page['name']) ?>">Sua</a></td>
+                      <td>
+                        <div class="actions">
+                          <a class="btn" href="?edit_page=<?= urlencode($page['name']) ?>">Sua</a>
+                          <?php if (!in_array($page['name'], ['index.html', 'blog.html', '404.html'], true)): ?>
+                            <form method="post" onsubmit="return confirm('Xoa trang <?= h($page['name']) ?>? File se duoc backup truoc khi xoa.');">
+                              <input type="hidden" name="action" value="delete_page">
+                              <input type="hidden" name="filename" value="<?= h($page['name']) ?>">
+                              <button class="btn red" type="submit">Xoa</button>
+                            </form>
+                          <?php endif; ?>
+                        </div>
+                      </td>
                       </tr>
                     <?php endforeach; ?>
                   </tbody>
@@ -641,7 +697,18 @@ if ($loggedIn && $editBlog) {
                       <td><a href="<?= h($page['url']) ?>" target="_blank"><?= h($page['url']) ?></a></td>
                       <td><?= number_format($page['size']) ?> bytes</td>
                       <td><?= h($page['updated']) ?></td>
-                      <td><a class="btn" href="?edit_page=<?= urlencode($page['name']) ?>">Sua HTML</a></td>
+                      <td>
+                        <div class="actions">
+                          <a class="btn" href="?edit_page=<?= urlencode($page['name']) ?>">Sua</a>
+                          <?php if (!in_array($page['name'], ['index.html', 'blog.html', '404.html'], true)): ?>
+                            <form method="post" onsubmit="return confirm('Xoa trang <?= h($page['name']) ?>? File se duoc backup truoc khi xoa.');">
+                              <input type="hidden" name="action" value="delete_page">
+                              <input type="hidden" name="filename" value="<?= h($page['name']) ?>">
+                              <button class="btn red" type="submit">Xoa</button>
+                            </form>
+                          <?php endif; ?>
+                        </div>
+                      </td>
                     </tr>
                   <?php endforeach; ?>
                 </tbody>
@@ -768,7 +835,16 @@ if ($loggedIn && $editBlog) {
                       <td><a href="<?= h($post['url']) ?>" target="_blank"><?= h($post['url']) ?></a></td>
                       <td><?= number_format($post['size']) ?> bytes</td>
                       <td><?= h($post['updated']) ?></td>
-                      <td><a class="btn" href="?edit_blog=<?= urlencode($post['name']) ?>">Sua HTML</a></td>
+                      <td>
+                        <div class="actions">
+                          <a class="btn" href="?edit_blog=<?= urlencode($post['name']) ?>">Sua</a>
+                          <form method="post" onsubmit="return confirm('Xoa bai blog <?= h($post['name']) ?>? File se duoc backup truoc khi xoa.');">
+                            <input type="hidden" name="action" value="delete_blog">
+                            <input type="hidden" name="filename" value="<?= h($post['name']) ?>">
+                            <button class="btn red" type="submit">Xoa</button>
+                          </form>
+                        </div>
+                      </td>
                     </tr>
                   <?php endforeach; ?>
                   <?php if (!list_blog_posts()): ?>
