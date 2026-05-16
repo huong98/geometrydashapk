@@ -10113,3 +10113,32 @@ h3 a:hover {
   color: #fbbf24;
   text-decoration: none;
 }
+/* Admin-generated blog post readability */
+.blog-section article.blog-card-content,
+.blog-section article.blog-card-content p,
+.blog-section article.blog-card-content li,
+.blog-section article.blog-card-content span,
+.blog-section article.blog-card-content div {
+  color: #fff;
+}
+
+.blog-section article.blog-card-content h1,
+.blog-section article.blog-card-content h2,
+.blog-section article.blog-card-content h3,
+.blog-section article.blog-card-content h4,
+.blog-section article.blog-card-content h5,
+.blog-section article.blog-card-content h6,
+.blog-section article.blog-card-content strong {
+  color: #fff;
+}
+
+.blog-section article.blog-card-content a {
+  color: #ffcc3f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 700;
+}
+
+.blog-section article.blog-card-content a:hover {
+  color: #fbbf24;
+}

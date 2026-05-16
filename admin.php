@@ -682,6 +682,7 @@ if ($loggedIn && $editBlog) {
     .wysiwyg:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(245,180,0,.18); }
     .wysiwyg h1,.wysiwyg h2,.wysiwyg h3 { margin-top:0.85em; }
     .wysiwyg img { max-width:100%; height:auto; }
+    .wysiwyg a { color:#d97706; text-decoration:underline; text-underline-offset:3px; font-weight:700; }
     .source-editor { display:none; min-height:520px; border-radius:0; font-family:Consolas,Monaco,monospace; font-size:13px; line-height:1.45; white-space:pre; }
     .editor-source-mode .wysiwyg { display:none; }
     .editor-source-mode .source-editor { display:block; }
@@ -1135,7 +1136,14 @@ if ($loggedIn && $editBlog) {
 
         if (button.dataset.action === 'link') {
           const url = prompt('Nhap URL lien ket:');
-          if (url) document.execCommand('createLink', false, url);
+          if (url) {
+            const selection = window.getSelection();
+            if (!selection || selection.toString().trim() === '') {
+              document.execCommand('insertHTML', false, '<a href="' + url + '">' + url + '</a>');
+            } else {
+              document.execCommand('createLink', false, url);
+            }
+          }
         }
 
         if (button.dataset.action === 'image') {
