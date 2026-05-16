@@ -1,5 +1,5 @@
 // Hero section button interactions
-// document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function () {
  // const installBtn = document.querySelector(".btn-install");
  // if (installBtn) {
    // installBtn.addEventListener("click", function () {
