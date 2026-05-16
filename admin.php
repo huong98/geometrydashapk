@@ -292,6 +292,61 @@ function add_menu_item_to_public_pages($label, $slug) {
     }
 }
 
+function remove_menu_item_from_public_pages($slug) {
+    global $baseDir;
+    $files = glob($baseDir . DIRECTORY_SEPARATOR . '*.html') ?: [];
+    $slug = trim((string) $slug, '/');
+    if ($slug === '') {
+        return 0;
+    }
+    $changed = 0;
+    foreach ($files as $file) {
+        $name = basename($file);
+        if (in_array($name, ['admin.html'], true) || !is_writable($file)) {
+            continue;
+        }
+        $html = file_get_contents($file);
+        $pattern = '/\s*<li>\s*<a\s+href=["\'](?:\.\/|\/)?' . preg_quote($slug, '/') . '["\']\s+class=["\']nav-link(?:\s+active)?["\'][^>]*>.*?<\/a>\s*<\/li>/is';
+        $updated = preg_replace($pattern, '', $html, -1, $count);
+        if ($count > 0) {
+            backup_file($file);
+            file_put_contents($file, $updated);
+            $changed++;
+        }
+    }
+    return $changed;
+}
+
+function get_home_head_code() {
+    global $baseDir;
+    $path = $baseDir . DIRECTORY_SEPARATOR . 'index.html';
+    if (!is_file($path)) {
+        return '';
+    }
+    $html = file_get_contents($path);
+    if (preg_match('/<!-- ADMIN HEAD CODE START -->(.*?)<!-- ADMIN HEAD CODE END -->/is', $html, $match)) {
+        return trim($match[1]);
+    }
+    return '';
+}
+
+function save_home_head_code($code) {
+    global $baseDir;
+    $path = $baseDir . DIRECTORY_SEPARATOR . 'index.html';
+    if (!is_file($path) || !is_writable($path)) {
+        return false;
+    }
+    $html = file_get_contents($path);
+    $block = '<!-- ADMIN HEAD CODE START -->' . PHP_EOL . rtrim((string) $code) . PHP_EOL . '<!-- ADMIN HEAD CODE END -->';
+    if (preg_match('/<!-- ADMIN HEAD CODE START -->.*?<!-- ADMIN HEAD CODE END -->/is', $html)) {
+        $html = preg_replace('/<!-- ADMIN HEAD CODE START -->.*?<!-- ADMIN HEAD CODE END -->/is', $block, $html, 1);
+    } else {
+        $html = preg_replace('/<\/head>/i', $block . PHP_EOL . '</head>', $html, 1);
+    }
+    backup_file($path);
+    return file_put_contents($path, $html) !== false;
+}
+
 function list_root_pages() {
     global $baseDir;
     $skip = ['admin.html'];
@@ -443,7 +498,12 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             backup_file($path);
             unlink($path);
+            $slug = preg_replace('/\.html$/i', '', $filename);
+            $removedMenus = remove_menu_item_from_public_pages($slug);
             $message = 'Da xoa trang ' . $filename . '.';
+            if ($removedMenus > 0) {
+                $message .= ' Da go link menu khoi ' . $removedMenus . ' trang.';
+            }
         }
     }
 
@@ -458,6 +518,20 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
             unlink($path);
             remove_blog_card($slug);
             $message = 'Da xoa bai blog ' . $filename . ' va go card khoi blog.html.';
+        }
+    }
+
+    if ($action === 'remove_menu_slug') {
+        $slug = slugify($_POST['slug'] ?? '');
+        $removedMenus = remove_menu_item_from_public_pages($slug);
+        $message = 'Da go link menu slug "' . $slug . '" khoi ' . $removedMenus . ' trang.';
+    }
+
+    if ($action === 'save_home_head_code') {
+        if (save_home_head_code($_POST['head_code'] ?? '')) {
+            $message = 'Da luu code trong the head cua trang chu index.html.';
+        } else {
+            $error = 'Khong the luu code head vao index.html.';
         }
     }
 }
@@ -603,6 +677,9 @@ if ($loggedIn && $editBlog) {
         <a class="<?= $section === 'new-page' ? 'active' : '' ?>" href="admin.php?section=new-page"><span class="icon">NP</span>Them chuyen muc</a>
         <a class="<?= in_array($section, ['blogs','edit-blog'], true) ? 'active' : '' ?>" href="admin.php?section=blogs"><span class="icon">BL</span>Bai blog</a>
         <a class="<?= $section === 'new-blog' ? 'active' : '' ?>" href="admin.php?section=new-blog"><span class="icon">NB</span>Them blog</a>
+        <div class="nav-label">Cau hinh</div>
+        <a class="<?= $section === 'head-code' ? 'active' : '' ?>" href="admin.php?section=head-code"><span class="icon">HD</span>Code head trang chu</a>
+        <a class="<?= $section === 'menu-tools' ? 'active' : '' ?>" href="admin.php?section=menu-tools"><span class="icon">MN</span>Cong cu menu</a>
         <div class="nav-label">Lien ket</div>
         <a href="./" target="_blank"><span class="icon">WE</span>Xem website</a>
         <a href="?logout=1"><span class="icon">LO</span>Dang xuat</a>
@@ -953,6 +1030,47 @@ if ($loggedIn && $editBlog) {
                 <div class="wysiwyg" contenteditable="true"><h2>Heading</h2><p>Noi dung bai viet...</p></div>
               </div>
               <button class="btn primary" type="submit">Dang bai blog</button>
+            </div>
+          </form>
+        <?php endif; ?>
+
+        <?php if ($section === 'head-code'): ?>
+          <div class="section-title">
+            <div>
+              <h2>Code trong the head trang chu</h2>
+              <p>Dan ma Google Tag Manager, Adsense, Search Console, pixel hoac script khac vao day.</p>
+            </div>
+            <a class="btn" href="./" target="_blank">Xem trang chu</a>
+          </div>
+          <form class="panel" method="post">
+            <div class="panel-body">
+              <input type="hidden" name="action" value="save_home_head_code">
+              <div class="field">
+                <label for="headCode">Code chen truoc the &lt;/head&gt; cua index.html</label>
+                <textarea class="code" id="headCode" name="head_code" spellcheck="false" placeholder="<!-- Google tag / Adsense / verification code -->"><?= h(get_home_head_code()) ?></textarea>
+                <div class="hint">Admin se luu code trong block <code>ADMIN HEAD CODE START/END</code> de lan sau sua lai khong bi trung lap.</div>
+              </div>
+              <button class="btn primary" type="submit">Luu code head</button>
+            </div>
+          </form>
+        <?php endif; ?>
+
+        <?php if ($section === 'menu-tools'): ?>
+          <div class="section-title">
+            <div>
+              <h2>Cong cu menu</h2>
+              <p>Su dung khi da xoa file trang nhung link chuyen muc van con tren menu do HTML cu hoac cache.</p>
+            </div>
+          </div>
+          <form class="panel" method="post">
+            <div class="panel-body">
+              <input type="hidden" name="action" value="remove_menu_slug">
+              <div class="field">
+                <label for="menuSlug">Slug can go khoi menu</label>
+                <input id="menuSlug" name="slug" placeholder="vi-du: abc" required>
+                <div class="hint">Nhap slug khong co dau slash. Vi du link la <code>/abc</code> thi nhap <code>abc</code>.</div>
+              </div>
+              <button class="btn red" type="submit" onclick="return confirm('Go slug nay khoi menu cac trang public?')">Go link menu</button>
             </div>
           </form>
         <?php endif; ?>
