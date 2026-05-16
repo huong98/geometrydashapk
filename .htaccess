@@ -13,8 +13,9 @@ RewriteRule ^Blog/?$ /blog [R=301,L]
 RewriteCond %{DOCUMENT_ROOT}/Blog/$1.html -f
 RewriteRule ^blog/([^/]+)/?$ /Blog/$1.html [L]
 
-# Redirect direct .html requests to extensionless URLs.
-RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /+(.*)\.html [NC]
+# Redirect direct .html page requests to extensionless URLs.
+# Only match the URL path, not query strings such as admin.php?edit_page=404.html.
+RewriteCond %{THE_REQUEST} \s/+([^?\s]+)\.html(?:[?\s]|$) [NC]
 RewriteRule ^ /%1 [R=301,L]
 
 # Serve matching .html files for extensionless URLs, e.g. /blog -> blog.html.

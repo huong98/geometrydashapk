@@ -21,6 +21,9 @@ function slugify($text) {
 function safe_root_html_path($filename) {
     global $baseDir;
     $filename = basename((string) $filename);
+    if ($filename !== '' && substr(strtolower($filename), -5) !== '.html') {
+        $filename .= '.html';
+    }
     if (!preg_match('/^[a-zA-Z0-9._-]+\.html$/', $filename)) {
         return null;
     }
@@ -34,6 +37,9 @@ function safe_root_html_path($filename) {
 function safe_blog_html_path($filename) {
     global $baseDir;
     $filename = basename((string) $filename);
+    if ($filename !== '' && substr(strtolower($filename), -5) !== '.html') {
+        $filename .= '.html';
+    }
     if (!preg_match('/^[a-zA-Z0-9._-]+\.html$/', $filename)) {
         return null;
     }
@@ -43,6 +49,52 @@ function safe_blog_html_path($filename) {
         return null;
     }
     return $path;
+}
+
+function get_tag_content($html, $tag) {
+    if (preg_match('/<' . preg_quote($tag, '/') . '\b[^>]*>(.*?)<\/' . preg_quote($tag, '/') . '>/is', $html, $match)) {
+        return html_entity_decode(trim(strip_tags($match[1])), ENT_QUOTES, 'UTF-8');
+    }
+    return '';
+}
+
+function get_meta_description($html) {
+    if (preg_match('/<meta\s+name=["\']description["\']\s+content=["\']([^"\']*)["\']/i', $html, $match)) {
+        return html_entity_decode($match[1], ENT_QUOTES, 'UTF-8');
+    }
+    if (preg_match('/<meta\s+content=["\']([^"\']*)["\']\s+name=["\']description["\']/i', $html, $match)) {
+        return html_entity_decode($match[1], ENT_QUOTES, 'UTF-8');
+    }
+    return '';
+}
+
+function get_main_content($html) {
+    if (preg_match('/<main\b[^>]*>(.*?)<\/main>/is', $html, $match)) {
+        return trim($match[1]);
+    }
+    if (preg_match('/<body\b[^>]*>(.*?)<\/body>/is', $html, $match)) {
+        return trim($match[1]);
+    }
+    return $html;
+}
+
+function replace_first_tag_content($html, $tag, $content) {
+    return preg_replace('/(<' . preg_quote($tag, '/') . '\b[^>]*>)(.*?)(<\/' . preg_quote($tag, '/') . '>)/is', '$1' . $content . '$3', $html, 1);
+}
+
+function replace_meta_description($html, $description) {
+    $descriptionEsc = h($description);
+    if (preg_match('/<meta\s+name=["\']description["\']\s+content=["\'][^"\']*["\']/i', $html)) {
+        return preg_replace('/<meta\s+name=["\']description["\']\s+content=["\'][^"\']*["\']/i', '<meta name="description" content="' . $descriptionEsc . '"', $html, 1);
+    }
+    return preg_replace('/<\/head>/i', '  <meta name="description" content="' . $descriptionEsc . '">' . PHP_EOL . '</head>', $html, 1);
+}
+
+function replace_main_content($html, $content) {
+    if (preg_match('/<main\b[^>]*>.*?<\/main>/is', $html)) {
+        return preg_replace('/(<main\b[^>]*>)(.*?)(<\/main>)/is', '$1' . PHP_EOL . $content . PHP_EOL . '$3', $html, 1);
+    }
+    return preg_replace('/<\/body>/i', '<main>' . PHP_EOL . $content . PHP_EOL . '</main>' . PHP_EOL . '</body>', $html, 1);
 }
 
 function page_template($title, $description, $bodyHtml) {
@@ -202,6 +254,28 @@ function backup_file($path) {
     copy($path, $backupDir . DIRECTORY_SEPARATOR . date('Ymd-His') . '-' . ltrim($name, '-'));
 }
 
+function add_menu_item_to_public_pages($label, $slug) {
+    global $baseDir;
+    $files = glob($baseDir . DIRECTORY_SEPARATOR . '*.html') ?: [];
+    $link = './' . $slug;
+    $item = '<li><a href="' . h($link) . '" class="nav-link">' . h($label) . '</a></li>';
+    foreach ($files as $file) {
+        $name = basename($file);
+        if (in_array($name, ['admin.html', '404.html'], true) || !is_writable($file)) {
+            continue;
+        }
+        $html = file_get_contents($file);
+        if (strpos($html, 'href="' . $link . '"') !== false || strpos($html, "href='" . $link . "'") !== false) {
+            continue;
+        }
+        if (strpos($html, '<li><a href="./blog"') !== false) {
+            backup_file($file);
+            $html = str_replace('<li><a href="./blog"', $item . PHP_EOL . '          <li><a href="./blog"', $html);
+            file_put_contents($file, $html);
+        }
+    }
+}
+
 function list_root_pages() {
     global $baseDir;
     $skip = ['admin.html'];
@@ -269,6 +343,21 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'save_page_content') {
+        $path = safe_root_html_path($_POST['filename'] ?? '');
+        if (!$path || !is_writable($path)) {
+            $error = 'Khong the ghi file trang nay.';
+        } else {
+            $html = file_get_contents($path);
+            $html = replace_first_tag_content($html, 'title', h($_POST['title'] ?? ''));
+            $html = replace_meta_description($html, $_POST['description'] ?? '');
+            $html = replace_main_content($html, (string) ($_POST['content'] ?? ''));
+            backup_file($path);
+            file_put_contents($path, $html);
+            $message = 'Da luu noi dung trang ' . basename($path) . '.';
+        }
+    }
+
     if ($action === 'save_blog') {
         $path = safe_blog_html_path($_POST['filename'] ?? '');
         if (!$path || !is_writable($path)) {
@@ -280,6 +369,21 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'save_blog_content') {
+        $path = safe_blog_html_path($_POST['filename'] ?? '');
+        if (!$path || !is_writable($path)) {
+            $error = 'Khong the ghi file bai viet nay.';
+        } else {
+            $html = file_get_contents($path);
+            $html = replace_first_tag_content($html, 'title', h($_POST['title'] ?? ''));
+            $html = replace_meta_description($html, $_POST['description'] ?? '');
+            $html = replace_main_content($html, (string) ($_POST['content'] ?? ''));
+            backup_file($path);
+            file_put_contents($path, $html);
+            $message = 'Da luu noi dung bai blog ' . basename($path) . '.';
+        }
+    }
+
     if ($action === 'create_page') {
         $slug = slugify($_POST['slug'] ?: $_POST['title']);
         $target = $baseDir . DIRECTORY_SEPARATOR . $slug . '.html';
@@ -288,6 +392,9 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $html = page_template($_POST['title'] ?? 'New Page', $_POST['description'] ?? '', $_POST['content'] ?? '');
             file_put_contents($target, $html);
+            if (!empty($_POST['add_to_menu'])) {
+                add_menu_item_to_public_pages($_POST['menu_label'] ?: $_POST['title'], $slug);
+            }
             $message = 'Da tao trang moi: ' . $slug . '.html';
         }
     }
@@ -315,12 +422,21 @@ $editPage = $_GET['edit_page'] ?? '';
 $editBlog = $_GET['edit_blog'] ?? '';
 $pageContent = '';
 $blogContent = '';
+$pageTitle = '';
+$pageDescription = '';
+$pageMain = '';
+$blogTitle = '';
+$blogDescription = '';
+$blogMain = '';
 
 if ($loggedIn && $editPage) {
     $path = safe_root_html_path($editPage);
     if ($path) {
         $section = 'edit-page';
         $pageContent = file_get_contents($path);
+        $pageTitle = get_tag_content($pageContent, 'title');
+        $pageDescription = get_meta_description($pageContent);
+        $pageMain = get_main_content($pageContent);
     }
 }
 
@@ -329,6 +445,9 @@ if ($loggedIn && $editBlog) {
     if ($path) {
         $section = 'edit-blog';
         $blogContent = file_get_contents($path);
+        $blogTitle = get_tag_content($blogContent, 'title');
+        $blogDescription = get_meta_description($blogContent);
+        $blogMain = get_main_content($blogContent);
     }
 }
 ?>
@@ -389,6 +508,16 @@ if ($loggedIn && $editBlog) {
     input,textarea,select { border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); min-height:40px; padding:9px 11px; outline:none; width:100%; }
     textarea.code { min-height:620px; font-family:Consolas,Monaco,monospace; font-size:13px; line-height:1.45; white-space:pre; }
     textarea.body { min-height:240px; }
+    .editor-toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:10px; border:1px solid var(--line); border-bottom:0; border-radius:8px 8px 0 0; background:#f8fafc; }
+    .tool { min-width:34px; height:34px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; font-weight:700; }
+    .tool select { min-height:34px; border:0; padding:0 8px; background:#fff; }
+    .wysiwyg { min-height:420px; border:1px solid var(--line); border-radius:0 0 8px 8px; background:#fff; padding:18px; outline:none; overflow:auto; }
+    .wysiwyg:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(245,180,0,.18); }
+    .wysiwyg h1,.wysiwyg h2,.wysiwyg h3 { margin-top:0.85em; }
+    .wysiwyg img { max-width:100%; height:auto; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
     input:focus,textarea:focus,select:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(245,180,0,.18); }
     .notice { padding:12px 14px; border-radius:8px; margin-bottom:16px; border:1px solid #bbf7d0; background:#dcfce7; color:#166534; font-weight:700; }
     .error { border-color:#fecaca; background:#fee2e2; color:#991b1b; }
@@ -425,8 +554,8 @@ if ($loggedIn && $editBlog) {
         <div class="nav-label">Tong quan</div>
         <a class="<?= $section === 'dashboard' ? 'active' : '' ?>" href="admin.php"><span class="icon">DB</span>Dashboard</a>
         <div class="nav-label">Noi dung</div>
-        <a class="<?= in_array($section, ['pages','edit-page'], true) ? 'active' : '' ?>" href="admin.php?section=pages"><span class="icon">PG</span>Sua trang</a>
-        <a class="<?= $section === 'new-page' ? 'active' : '' ?>" href="admin.php?section=new-page"><span class="icon">NP</span>Them trang</a>
+        <a class="<?= in_array($section, ['pages','edit-page'], true) ? 'active' : '' ?>" href="admin.php?section=pages"><span class="icon">CM</span>Chuyen muc / Trang</a>
+        <a class="<?= $section === 'new-page' ? 'active' : '' ?>" href="admin.php?section=new-page"><span class="icon">NP</span>Them chuyen muc</a>
         <a class="<?= in_array($section, ['blogs','edit-blog'], true) ? 'active' : '' ?>" href="admin.php?section=blogs"><span class="icon">BL</span>Bai blog</a>
         <a class="<?= $section === 'new-blog' ? 'active' : '' ?>" href="admin.php?section=new-blog"><span class="icon">NB</span>Them blog</a>
         <div class="nav-label">Lien ket</div>
@@ -523,10 +652,50 @@ if ($loggedIn && $editBlog) {
 
         <?php if ($section === 'edit-page'): ?>
           <div class="section-title">
-            <div><h2>Sua trang: <?= h($editPage) ?></h2><p>Editor nay sua truc tiep toan bo file HTML.</p></div>
+            <div><h2>Sua chuyen muc / trang: <?= h($editPage) ?></h2><p>Soan thao noi dung bang editor truc quan, khong can sua code HTML.</p></div>
             <a class="btn" href="<?= h($editPage === 'index.html' ? './' : './' . preg_replace('/\.html$/', '', $editPage)) ?>" target="_blank">Xem trang</a>
           </div>
-          <form class="panel" method="post">
+          <div class="tabs">
+            <button class="btn primary" type="button" data-tab="visualPage">Soan thao</button>
+            <button class="btn" type="button" data-tab="rawPage">Sua HTML goc</button>
+          </div>
+          <form class="panel tab-panel active" id="visualPage" method="post" data-editor-form>
+            <div class="panel-body">
+              <input type="hidden" name="action" value="save_page_content">
+              <input type="hidden" name="filename" value="<?= h($editPage) ?>">
+              <input type="hidden" name="content" class="editor-output">
+              <div class="field"><label for="pageTitleEdit">Meta title</label><input id="pageTitleEdit" name="title" value="<?= h($pageTitle) ?>"></div>
+              <div class="field"><label for="pageDescriptionEdit">Meta description</label><textarea id="pageDescriptionEdit" name="description"><?= h($pageDescription) ?></textarea></div>
+              <div class="field">
+                <label>Noi dung trang</label>
+                <div class="editor-toolbar" data-toolbar>
+                  <button class="tool" type="button" data-cmd="bold">B</button>
+                  <button class="tool" type="button" data-cmd="italic">I</button>
+                  <button class="tool" type="button" data-cmd="underline">U</button>
+                  <button class="tool" type="button" data-format="p">P</button>
+                  <button class="tool" type="button" data-format="h1">H1</button>
+                  <button class="tool" type="button" data-format="h2">H2</button>
+                  <button class="tool" type="button" data-format="h3">H3</button>
+                  <button class="tool" type="button" data-format="blockquote">Quote</button>
+                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
+                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
+                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
+                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
+                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
+                  <button class="tool" type="button" data-action="link">Link</button>
+                  <button class="tool" type="button" data-action="image">Img</button>
+                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
+                  <button class="tool" type="button" data-cmd="undo">Undo</button>
+                  <button class="tool" type="button" data-cmd="redo">Redo</button>
+                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
+                </div>
+                <div class="wysiwyg" contenteditable="true"><?= $pageMain ?></div>
+              </div>
+              <button class="btn primary" type="submit">Luu noi dung</button>
+              <a class="btn" href="?section=pages">Quay lai</a>
+            </div>
+          </form>
+          <form class="panel tab-panel" id="rawPage" method="post">
             <div class="panel-body">
               <input type="hidden" name="action" value="save_page">
               <input type="hidden" name="filename" value="<?= h($editPage) ?>">
@@ -542,16 +711,43 @@ if ($loggedIn && $editBlog) {
 
         <?php if ($section === 'new-page'): ?>
           <div class="section-title">
-            <div><h2>Them trang moi</h2><p>Tao file HTML moi o thu muc goc website.</p></div>
+            <div><h2>Them chuyen muc / trang moi</h2><p>Tao file HTML moi o thu muc goc website va co the them vao menu.</p></div>
           </div>
-          <form class="panel" method="post">
+          <form class="panel" method="post" data-editor-form>
             <div class="panel-body">
               <input type="hidden" name="action" value="create_page">
+              <input type="hidden" name="content" class="editor-output">
               <div class="field"><label for="pageTitle">Tieu de</label><input id="pageTitle" name="title" required></div>
               <div class="field"><label for="pageSlug">Slug URL</label><input id="pageSlug" name="slug" placeholder="vi-du: download-guide"></div>
               <div class="field"><label for="pageDescription">Meta description</label><textarea id="pageDescription" name="description" required></textarea></div>
-              <div class="field"><label for="pageContent">Noi dung HTML</label><textarea class="body" id="pageContent" name="content" placeholder="<h2>Section title</h2><p>Noi dung...</p>"></textarea></div>
-              <button class="btn primary" type="submit">Tao trang</button>
+              <div class="field"><label for="menuLabel">Ten hien thi tren menu</label><input id="menuLabel" name="menu_label" placeholder="Mac dinh lay theo tieu de"></div>
+              <div class="field"><label><input type="checkbox" name="add_to_menu" value="1" checked> Them vao menu cac trang public</label></div>
+              <div class="field">
+                <label>Noi dung</label>
+                <div class="editor-toolbar" data-toolbar>
+                  <button class="tool" type="button" data-cmd="bold">B</button>
+                  <button class="tool" type="button" data-cmd="italic">I</button>
+                  <button class="tool" type="button" data-cmd="underline">U</button>
+                  <button class="tool" type="button" data-format="p">P</button>
+                  <button class="tool" type="button" data-format="h1">H1</button>
+                  <button class="tool" type="button" data-format="h2">H2</button>
+                  <button class="tool" type="button" data-format="h3">H3</button>
+                  <button class="tool" type="button" data-format="blockquote">Quote</button>
+                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
+                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
+                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
+                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
+                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
+                  <button class="tool" type="button" data-action="link">Link</button>
+                  <button class="tool" type="button" data-action="image">Img</button>
+                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
+                  <button class="tool" type="button" data-cmd="undo">Undo</button>
+                  <button class="tool" type="button" data-cmd="redo">Redo</button>
+                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
+                </div>
+                <div class="wysiwyg" contenteditable="true"><h2>Tieu de section</h2><p>Nhap noi dung cua ban tai day.</p></div>
+              </div>
+              <button class="btn primary" type="submit">Tao chuyen muc</button>
             </div>
           </form>
         <?php endif; ?>
@@ -586,10 +782,50 @@ if ($loggedIn && $editBlog) {
 
         <?php if ($section === 'edit-blog'): ?>
           <div class="section-title">
-            <div><h2>Sua bai blog: <?= h($editBlog) ?></h2><p>Editor nay sua truc tiep toan bo file HTML.</p></div>
+            <div><h2>Sua bai blog: <?= h($editBlog) ?></h2><p>Soan thao bai viet bang editor truc quan.</p></div>
             <a class="btn" href="./blog/<?= h(preg_replace('/\.html$/', '', $editBlog)) ?>" target="_blank">Xem bai</a>
           </div>
-          <form class="panel" method="post">
+          <div class="tabs">
+            <button class="btn primary" type="button" data-tab="visualBlog">Soan thao</button>
+            <button class="btn" type="button" data-tab="rawBlog">Sua HTML goc</button>
+          </div>
+          <form class="panel tab-panel active" id="visualBlog" method="post" data-editor-form>
+            <div class="panel-body">
+              <input type="hidden" name="action" value="save_blog_content">
+              <input type="hidden" name="filename" value="<?= h($editBlog) ?>">
+              <input type="hidden" name="content" class="editor-output">
+              <div class="field"><label for="blogTitleEdit">Meta title</label><input id="blogTitleEdit" name="title" value="<?= h($blogTitle) ?>"></div>
+              <div class="field"><label for="blogDescriptionEdit">Meta description</label><textarea id="blogDescriptionEdit" name="description"><?= h($blogDescription) ?></textarea></div>
+              <div class="field">
+                <label>Noi dung bai viet</label>
+                <div class="editor-toolbar" data-toolbar>
+                  <button class="tool" type="button" data-cmd="bold">B</button>
+                  <button class="tool" type="button" data-cmd="italic">I</button>
+                  <button class="tool" type="button" data-cmd="underline">U</button>
+                  <button class="tool" type="button" data-format="p">P</button>
+                  <button class="tool" type="button" data-format="h1">H1</button>
+                  <button class="tool" type="button" data-format="h2">H2</button>
+                  <button class="tool" type="button" data-format="h3">H3</button>
+                  <button class="tool" type="button" data-format="blockquote">Quote</button>
+                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
+                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
+                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
+                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
+                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
+                  <button class="tool" type="button" data-action="link">Link</button>
+                  <button class="tool" type="button" data-action="image">Img</button>
+                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
+                  <button class="tool" type="button" data-cmd="undo">Undo</button>
+                  <button class="tool" type="button" data-cmd="redo">Redo</button>
+                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
+                </div>
+                <div class="wysiwyg" contenteditable="true"><?= $blogMain ?></div>
+              </div>
+              <button class="btn primary" type="submit">Luu bai blog</button>
+              <a class="btn" href="?section=blogs">Quay lai</a>
+            </div>
+          </form>
+          <form class="panel tab-panel" id="rawBlog" method="post">
             <div class="panel-body">
               <input type="hidden" name="action" value="save_blog">
               <input type="hidden" name="filename" value="<?= h($editBlog) ?>">
@@ -607,14 +843,39 @@ if ($loggedIn && $editBlog) {
           <div class="section-title">
             <div><h2>Them bai blog</h2><p>Tao file bai viet va chen card vao trang blog.</p></div>
           </div>
-          <form class="panel" method="post">
+          <form class="panel" method="post" data-editor-form>
             <div class="panel-body">
               <input type="hidden" name="action" value="create_blog">
+              <input type="hidden" name="content" class="editor-output">
               <div class="field"><label for="blogTitle">Tieu de</label><input id="blogTitle" name="title" required></div>
               <div class="field"><label for="blogSlug">Slug URL</label><input id="blogSlug" name="slug" placeholder="vi-du: geometry-dash-tips"></div>
               <div class="field"><label for="blogCategory">Chuyen muc</label><input id="blogCategory" name="category" value="Guide"></div>
               <div class="field"><label for="blogExcerpt">Mo ta ngan</label><textarea id="blogExcerpt" name="excerpt" required></textarea></div>
-              <div class="field"><label for="blogContent">Noi dung HTML</label><textarea class="body" id="blogContent" name="content" placeholder="<h2>Heading</h2><p>Noi dung bai viet...</p>"></textarea></div>
+              <div class="field">
+                <label>Noi dung bai viet</label>
+                <div class="editor-toolbar" data-toolbar>
+                  <button class="tool" type="button" data-cmd="bold">B</button>
+                  <button class="tool" type="button" data-cmd="italic">I</button>
+                  <button class="tool" type="button" data-cmd="underline">U</button>
+                  <button class="tool" type="button" data-format="p">P</button>
+                  <button class="tool" type="button" data-format="h1">H1</button>
+                  <button class="tool" type="button" data-format="h2">H2</button>
+                  <button class="tool" type="button" data-format="h3">H3</button>
+                  <button class="tool" type="button" data-format="blockquote">Quote</button>
+                  <button class="tool" type="button" data-cmd="insertUnorderedList">UL</button>
+                  <button class="tool" type="button" data-cmd="insertOrderedList">OL</button>
+                  <button class="tool" type="button" data-cmd="justifyLeft">Left</button>
+                  <button class="tool" type="button" data-cmd="justifyCenter">Center</button>
+                  <button class="tool" type="button" data-cmd="justifyRight">Right</button>
+                  <button class="tool" type="button" data-action="link">Link</button>
+                  <button class="tool" type="button" data-action="image">Img</button>
+                  <button class="tool" type="button" data-cmd="insertHorizontalRule">HR</button>
+                  <button class="tool" type="button" data-cmd="undo">Undo</button>
+                  <button class="tool" type="button" data-cmd="redo">Redo</button>
+                  <button class="tool" type="button" data-cmd="removeFormat">Clear</button>
+                </div>
+                <div class="wysiwyg" contenteditable="true"><h2>Heading</h2><p>Noi dung bai viet...</p></div>
+              </div>
               <button class="btn primary" type="submit">Dang bai blog</button>
             </div>
           </form>
@@ -628,6 +889,55 @@ if ($loggedIn && $editBlog) {
     if (menuToggle && sidebar) {
       menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
     }
+
+    document.querySelectorAll('[data-tab]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const target = document.getElementById(button.dataset.tab);
+        if (!target) return;
+        document.querySelectorAll('[data-tab]').forEach((item) => item.classList.remove('primary'));
+        document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.remove('active'));
+        button.classList.add('primary');
+        target.classList.add('active');
+      });
+    });
+
+    document.querySelectorAll('[data-toolbar]').forEach((toolbar) => {
+      toolbar.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const editor = toolbar.parentElement.querySelector('.wysiwyg');
+        if (!editor) return;
+        editor.focus();
+
+        if (button.dataset.cmd) {
+          document.execCommand(button.dataset.cmd, false, null);
+        }
+
+        if (button.dataset.format) {
+          document.execCommand('formatBlock', false, button.dataset.format);
+        }
+
+        if (button.dataset.action === 'link') {
+          const url = prompt('Nhap URL lien ket:');
+          if (url) document.execCommand('createLink', false, url);
+        }
+
+        if (button.dataset.action === 'image') {
+          const url = prompt('Nhap URL anh:');
+          if (url) document.execCommand('insertImage', false, url);
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-editor-form]').forEach((form) => {
+      form.addEventListener('submit', () => {
+        const editor = form.querySelector('.wysiwyg');
+        const output = form.querySelector('.editor-output');
+        if (editor && output) {
+          output.value = editor.innerHTML.trim();
+        }
+      });
+    });
   </script>
 <?php endif; ?>
 </body>
