@@ -1,0 +1,54 @@
+.language-switcher {
+  display: flex;
+  align-items: center;
+}
+
+.translate-control {
+  display: flex;
+  align-items: center;
+  min-width: 150px;
+}
+
+.translate-control .goog-te-gadget {
+  color: transparent;
+  font-size: 0;
+  line-height: 1;
+}
+
+.translate-control .goog-te-combo {
+  width: 100%;
+  max-width: 180px;
+  min-height: 38px;
+  border: 1px solid rgba(255, 204, 63, 0.55);
+  border-radius: 8px;
+  background: rgba(18, 20, 28, 0.92);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 0.45rem 0.65rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.translate-control .goog-te-combo:focus {
+  border-color: #ffcc3f;
+  box-shadow: 0 0 0 3px rgba(255, 204, 63, 0.18);
+}
+
+.translate-control .goog-te-combo option {
+  background: #151923;
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .language-switcher {
+    width: 100%;
+  }
+
+  .translate-control,
+  .translate-control .goog-te-combo {
+    width: 100%;
+    max-width: none;
+  }
+}
