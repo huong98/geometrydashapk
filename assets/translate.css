@@ -1,6 +1,23 @@
-.language-switcher {
+.language-switcher,
+.footer-language {
   display: flex;
   align-items: center;
+}
+
+.footer-language {
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 1.25rem auto 0;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.footer-language-label {
+  color: #ffcc3f;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .translate-control {
@@ -44,6 +61,12 @@
 @media (max-width: 768px) {
   .language-switcher {
     width: 100%;
+  }
+
+  .footer-language {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.6rem;
   }
 
   .translate-control,
