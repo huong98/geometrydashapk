@@ -9,6 +9,19 @@ RewriteRule ^Blog\.html/?(.*)$ /blog/$1 [R=301,L,NE]
 
 RewriteRule ^Blog/?$ /blog [R=301,L]
 
+# Language-prefixed URLs, e.g. /vn, /jp, /de/blog, /fr/blog/post-slug.
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/(Home|Android|IOS|Windows|Blog|assets|About-Us_files|Contact-Us_files|Disclaimer_files|Privacy-Policy_files|Terms-and-Conditions_files)/(.*)$ /$2/$3 [L]
+
+RewriteCond %{DOCUMENT_ROOT}/Blog/$2.html -f
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/blog/([^/]+)/?$ /Blog/$2.html [L]
+
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/blog/?$ /blog.html [L]
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/android/?$ /Android.html [L]
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/ios/?$ /IOS.html [L]
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/window/?$ /Window.html [L]
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/(Android|IOS|Window|about|contact|privacy-policy|disclaimer|terms-and-conditions)/?$ /$2.html [L]
+RewriteRule ^(vn|jp|kr|cn|tw|es|fr|de|it|nl|pt|se|dk|no|fi|id|th|my|pl|tr|ru|ua|in|bd|pk|ir|sa|il|cz|ro|hu|gr)/?$ /index.html [L]
+
 # Serve generated blog posts from the /Blog directory for clean /blog/slug URLs.
 RewriteCond %{DOCUMENT_ROOT}/Blog/$1.html -f
 RewriteRule ^blog/([^/]+)/?$ /Blog/$1.html [L]
