@@ -23,10 +23,18 @@ jobs:
 
             PRESERVE_DIR="/tmp/geometrydashapk-admin-content"
             rm -rf "$PRESERVE_DIR"
-            mkdir -p "$PRESERVE_DIR/Blog"
+            mkdir -p "$PRESERVE_DIR/root" "$PRESERVE_DIR/Blog"
 
-            if [ -f blog.html ]; then
-              cp blog.html "$PRESERVE_DIR/blog.html"
+            if ls *.html >/dev/null 2>&1; then
+              for file in *.html; do
+                case "$file" in
+                  admin.html|404.html)
+                    ;;
+                  *)
+                    cp "$file" "$PRESERVE_DIR/root/"
+                    ;;
+                esac
+              done
             fi
 
             if [ -d Blog ]; then
@@ -39,11 +47,11 @@ jobs:
 
             git pull origin main
 
-            if [ -f "$PRESERVE_DIR/blog.html" ]; then
-              cp "$PRESERVE_DIR/blog.html" blog.html
+            if [ -d "$PRESERVE_DIR/root" ]; then
+              cp "$PRESERVE_DIR/root/"*.html . 2>/dev/null || true
             fi
 
             if [ -d "$PRESERVE_DIR/Blog" ]; then
               mkdir -p Blog
-              cp -n "$PRESERVE_DIR/Blog/"*.html Blog/ 2>/dev/null || true
+              cp "$PRESERVE_DIR/Blog/"*.html Blog/ 2>/dev/null || true
             fi
