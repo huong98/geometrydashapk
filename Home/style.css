@@ -236,7 +236,11 @@ html {
     justify-content: flex-start;
   }
   .hero-image {
-    display: none;
+    display: flex;
+  }
+
+  .hero-game-frame {
+    min-height: 320px;
   }
   .hero-buttons {
     flex-direction: column;
@@ -404,6 +408,16 @@ html {
   max-width: 100%;
   width: 500px;
   border-radius: 18px;
+  box-shadow: 0 4px 32px 0 rgba(0, 0, 0, 0.25);
+}
+.hero-game-frame {
+  display: block;
+  width: min(100%, 640px);
+  aspect-ratio: 16 / 9;
+  min-height: 360px;
+  border: 1px solid rgba(255, 204, 63, 0.35);
+  border-radius: 18px;
+  background: #05070b;
   box-shadow: 0 4px 32px 0 rgba(0, 0, 0, 0.25);
 }
 body {
