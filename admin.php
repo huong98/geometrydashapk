@@ -423,6 +423,310 @@ function list_blog_posts() {
     return $posts;
 }
 
+function admin_json_path($filename) {
+    global $baseDir;
+    return $baseDir . DIRECTORY_SEPARATOR . $filename;
+}
+
+function read_admin_json($filename, $default) {
+    $path = admin_json_path($filename);
+    if (!is_file($path)) {
+        return $default;
+    }
+    $data = json_decode((string) file_get_contents($path), true);
+    return is_array($data) ? $data : $default;
+}
+
+function write_admin_json($filename, $data) {
+    $path = admin_json_path($filename);
+    return file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) !== false;
+}
+
+function ai_default_config() {
+    return [
+        'api_key' => '',
+        'model' => 'gpt-5.2',
+        'daily_limit' => 2,
+        'category' => 'Guide',
+        'language' => 'English',
+        'site_context' => 'Geometry Dash APK blog for Android, iOS, and PC players. Write helpful, SEO-friendly posts about Geometry Dash APK guides, tips, updates, installation, gameplay, levels, and safety.',
+        'cron_token' => bin2hex(random_bytes(16)),
+        'updated_at' => date('c'),
+    ];
+}
+
+function get_ai_config() {
+    $config = array_merge(ai_default_config(), read_admin_json('.admin-ai-config.json', []));
+    $config['daily_limit'] = max(1, (int) ($config['daily_limit'] ?? 2));
+    $config['model'] = trim((string) ($config['model'] ?? 'gpt-5.2')) ?: 'gpt-5.2';
+    return $config;
+}
+
+function save_ai_config($input) {
+    $current = get_ai_config();
+    $apiKey = trim((string) ($input['api_key'] ?? ''));
+    $config = [
+        'api_key' => $apiKey !== '' ? $apiKey : ($current['api_key'] ?? ''),
+        'model' => trim((string) ($input['model'] ?? 'gpt-5.2')) ?: 'gpt-5.2',
+        'daily_limit' => max(1, (int) ($input['daily_limit'] ?? 2)),
+        'category' => trim((string) ($input['category'] ?? 'Guide')) ?: 'Guide',
+        'language' => trim((string) ($input['language'] ?? 'English')) ?: 'English',
+        'site_context' => trim((string) ($input['site_context'] ?? '')),
+        'cron_token' => $current['cron_token'] ?? bin2hex(random_bytes(16)),
+        'updated_at' => date('c'),
+    ];
+    if ($config['site_context'] === '') {
+        $config['site_context'] = ai_default_config()['site_context'];
+    }
+    return write_admin_json('.admin-ai-config.json', $config);
+}
+
+function get_ai_queue() {
+    $queue = read_admin_json('.admin-ai-queue.json', []);
+    return is_array($queue) ? $queue : [];
+}
+
+function save_ai_queue($queue) {
+    return write_admin_json('.admin-ai-queue.json', array_values($queue));
+}
+
+function mask_secret($value) {
+    $value = (string) $value;
+    if ($value === '') {
+        return 'Chua cau hinh';
+    }
+    return substr($value, 0, 7) . '...' . substr($value, -4);
+}
+
+function openai_api_key($config) {
+    $envKey = getenv('OPENAI_API_KEY');
+    if ($envKey) {
+        return $envKey;
+    }
+    return trim((string) ($config['api_key'] ?? ''));
+}
+
+function unique_blog_slug($title, $preferredSlug = '') {
+    global $baseDir;
+    $base = slugify($preferredSlug ?: $title);
+    $slug = $base;
+    $i = 2;
+    while (file_exists($baseDir . DIRECTORY_SEPARATOR . 'Blog' . DIRECTORY_SEPARATOR . $slug . '.html')) {
+        $slug = $base . '-' . $i;
+        $i++;
+    }
+    return $slug;
+}
+
+function create_blog_post_file($title, $excerpt, $category, $contentHtml, $preferredSlug = '') {
+    global $baseDir;
+    $slug = unique_blog_slug($title, $preferredSlug);
+    $target = $baseDir . DIRECTORY_SEPARATOR . 'Blog' . DIRECTORY_SEPARATOR . $slug . '.html';
+    $html = blog_template($title, $excerpt, $category, $contentHtml);
+    if (file_put_contents($target, $html) === false) {
+        return [false, 'Khong ghi duoc file Blog/' . $slug . '.html'];
+    }
+    backup_file($baseDir . DIRECTORY_SEPARATOR . 'blog.html');
+    if (!insert_blog_card($slug, $title, $category, $excerpt)) {
+        return [false, 'Da tao file nhung khong chen duoc card vao blog.html'];
+    }
+    return [true, $slug];
+}
+
+function extract_response_text($response) {
+    if (isset($response['output_text']) && is_string($response['output_text'])) {
+        return $response['output_text'];
+    }
+    $text = '';
+    foreach (($response['output'] ?? []) as $item) {
+        foreach (($item['content'] ?? []) as $content) {
+            if (($content['type'] ?? '') === 'output_text' && isset($content['text'])) {
+                $text .= $content['text'];
+            }
+        }
+    }
+    return $text;
+}
+
+function openai_generate_blog_article($title, $config) {
+    $apiKey = openai_api_key($config);
+    if ($apiKey === '') {
+        return [false, 'Thieu OPENAI_API_KEY hoac API key trong cau hinh AI.'];
+    }
+
+    $schema = [
+        'type' => 'object',
+        'additionalProperties' => false,
+        'required' => ['title', 'slug', 'category', 'excerpt', 'content_html'],
+        'properties' => [
+            'title' => ['type' => 'string'],
+            'slug' => ['type' => 'string'],
+            'category' => ['type' => 'string'],
+            'excerpt' => ['type' => 'string'],
+            'content_html' => ['type' => 'string'],
+        ],
+    ];
+    $input = "Write a complete blog post for this title: {$title}\n\n"
+        . "Language: " . ($config['language'] ?? 'English') . "\n"
+        . "Default category: " . ($config['category'] ?? 'Guide') . "\n"
+        . "Site context: " . ($config['site_context'] ?? '') . "\n\n"
+        . "Return useful SEO content for readers. Use clean HTML only inside content_html: h2, h3, p, ul, ol, li, strong, em, a. Do not include html, head, body, script, style, or markdown fences. Include an introduction, several practical sections, and a short conclusion.";
+
+    $payload = [
+        'model' => $config['model'] ?? 'gpt-5.2',
+        'input' => $input,
+        'text' => [
+            'format' => [
+                'type' => 'json_schema',
+                'name' => 'blog_article',
+                'strict' => true,
+                'schema' => $schema,
+            ],
+        ],
+    ];
+
+    if (!function_exists('curl_init')) {
+        return [false, 'PHP chua bat extension cURL, khong the goi OpenAI API.'];
+    }
+
+    $ch = curl_init('https://api.openai.com/v1/responses');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey,
+        ],
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_SLASHES),
+        CURLOPT_TIMEOUT => 180,
+    ]);
+    $raw = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($raw === false || $curlError) {
+        return [false, 'Loi ket noi OpenAI: ' . $curlError];
+    }
+    $response = json_decode($raw, true);
+    if ($status < 200 || $status >= 300) {
+        $detail = $response['error']['message'] ?? $raw;
+        return [false, 'OpenAI tra loi loi HTTP ' . $status . ': ' . $detail];
+    }
+    $text = extract_response_text($response);
+    $article = json_decode($text, true);
+    if (!is_array($article)) {
+        return [false, 'Khong doc duoc JSON bai viet tu OpenAI.'];
+    }
+    return [true, $article];
+}
+
+function add_ai_titles_to_queue($titlesText) {
+    $titles = preg_split('/\R+/', (string) $titlesText);
+    $queue = get_ai_queue();
+    $added = 0;
+    foreach ($titles as $title) {
+        $title = trim($title);
+        if ($title === '') {
+            continue;
+        }
+        $queue[] = [
+            'id' => bin2hex(random_bytes(8)),
+            'title' => $title,
+            'status' => 'pending',
+            'created_at' => date('c'),
+            'posted_at' => '',
+            'slug' => '',
+            'error' => '',
+        ];
+        $added++;
+    }
+    save_ai_queue($queue);
+    return $added;
+}
+
+function ai_posts_count_today($queue) {
+    $today = date('Y-m-d');
+    $count = 0;
+    foreach ($queue as $item) {
+        if (($item['status'] ?? '') === 'posted' && substr((string) ($item['posted_at'] ?? ''), 0, 10) === $today) {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+function run_ai_queue($limitOverride = null) {
+    $config = get_ai_config();
+    $queue = get_ai_queue();
+    $remaining = max(0, (int) ($config['daily_limit'] ?? 2) - ai_posts_count_today($queue));
+    if ($limitOverride !== null) {
+        $remaining = min($remaining, max(0, (int) $limitOverride));
+    }
+    if ($remaining < 1) {
+        return [0, 'Da dat gioi han dang bai hom nay.'];
+    }
+
+    $posted = 0;
+    foreach ($queue as $index => $item) {
+        if ($remaining < 1) {
+            break;
+        }
+        if (($item['status'] ?? '') !== 'pending') {
+            continue;
+        }
+        $remaining--;
+        $queue[$index]['status'] = 'running';
+        $queue[$index]['error'] = '';
+        save_ai_queue($queue);
+
+        [$ok, $result] = openai_generate_blog_article($item['title'] ?? '', $config);
+        if (!$ok) {
+            $queue[$index]['status'] = 'error';
+            $queue[$index]['error'] = $result;
+            continue;
+        }
+
+        $title = trim((string) ($result['title'] ?? $item['title']));
+        $excerpt = trim((string) ($result['excerpt'] ?? ''));
+        $category = trim((string) ($result['category'] ?? ($config['category'] ?? 'Guide'))) ?: 'Guide';
+        $content = trim((string) ($result['content_html'] ?? ''));
+        if ($excerpt === '' || $content === '') {
+            $queue[$index]['status'] = 'error';
+            $queue[$index]['error'] = 'Bai viet AI thieu excerpt hoac content_html.';
+            continue;
+        }
+
+        [$created, $slugOrError] = create_blog_post_file($title, $excerpt, $category, $content, $result['slug'] ?? '');
+        if (!$created) {
+            $queue[$index]['status'] = 'error';
+            $queue[$index]['error'] = $slugOrError;
+            continue;
+        }
+        $queue[$index]['status'] = 'posted';
+        $queue[$index]['posted_at'] = date('c');
+        $queue[$index]['slug'] = $slugOrError;
+        $queue[$index]['error'] = '';
+        $posted++;
+    }
+    save_ai_queue($queue);
+    return [$posted, 'Da xu ly queue AI.'];
+}
+
+$cronConfig = get_ai_config();
+if (isset($_GET['run_ai_queue'])) {
+    $token = (string) ($_GET['token'] ?? '');
+    if ($token === '' || !hash_equals((string) ($cronConfig['cron_token'] ?? ''), $token)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+    [$posted, $cronMessage] = run_ai_queue();
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo $cronMessage . ' Posted: ' . $posted;
+    exit;
+}
+
 if (isset($_GET['logout'])) {
     session_destroy();
     header('Location: admin.php');
@@ -527,6 +831,45 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'save_ai_config') {
+        if (save_ai_config($_POST)) {
+            $message = 'Da luu cau hinh AI.';
+        } else {
+            $error = 'Khong luu duoc cau hinh AI.';
+        }
+        $section = 'ai-blog';
+    }
+
+    if ($action === 'add_ai_titles') {
+        $added = add_ai_titles_to_queue($_POST['titles'] ?? '');
+        $message = 'Da them ' . $added . ' tieu de vao queue AI.';
+        if (!empty($_POST['run_now'])) {
+            [$posted, $runMessage] = run_ai_queue((int) ($_POST['run_limit'] ?? 1));
+            $message .= ' ' . $runMessage . ' Dang thanh cong: ' . $posted . '.';
+        }
+        $section = 'ai-blog';
+    }
+
+    if ($action === 'run_ai_queue_now') {
+        [$posted, $runMessage] = run_ai_queue((int) ($_POST['run_limit'] ?? 1));
+        $message = $runMessage . ' Dang thanh cong: ' . $posted . '.';
+        $section = 'ai-blog';
+    }
+
+    if ($action === 'retry_ai_item') {
+        $id = (string) ($_POST['id'] ?? '');
+        $queue = get_ai_queue();
+        foreach ($queue as $index => $item) {
+            if (($item['id'] ?? '') === $id && in_array(($item['status'] ?? ''), ['error', 'running'], true)) {
+                $queue[$index]['status'] = 'pending';
+                $queue[$index]['error'] = '';
+            }
+        }
+        save_ai_queue($queue);
+        $message = 'Da dua muc AI ve trang thai pending.';
+        $section = 'ai-blog';
+    }
+
     if ($action === 'delete_page') {
         $filename = basename((string) ($_POST['filename'] ?? ''));
         $protected = ['index.html', 'blog.html', 'admin.html', '404.html'];
@@ -577,6 +920,9 @@ if ($loggedIn && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $section = $_GET['section'] ?? 'dashboard';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['save_ai_config', 'add_ai_titles', 'run_ai_queue_now', 'retry_ai_item'], true)) {
+    $section = 'ai-blog';
+}
 $editPage = $_GET['edit_page'] ?? '';
 $editBlog = $_GET['edit_blog'] ?? '';
 $pageContent = '';
@@ -662,6 +1008,9 @@ if ($loggedIn && $editBlog) {
     .btn.primary { border-color:var(--brand); background:var(--brand); color:#161616; }
     .btn.red { color:var(--red); border-color:rgba(214,69,69,.35); }
     .status { display:inline-flex; align-items:center; min-height:24px; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; color:#047857; background:#d1fae5; }
+    .status.pending { color:#92400e; background:#fef3c7; }
+    .status.running { color:#1d4ed8; background:#dbeafe; }
+    .status.error { color:#991b1b; background:#fee2e2; }
     .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
     label { font-size:13px; color:#334155; font-weight:700; }
     input,textarea,select { border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--text); min-height:40px; padding:9px 11px; outline:none; width:100%; }
@@ -732,6 +1081,7 @@ if ($loggedIn && $editBlog) {
         <a class="<?= $section === 'new-page' ? 'active' : '' ?>" href="admin.php?section=new-page"><span class="icon">NP</span>Them chuyen muc</a>
         <a class="<?= in_array($section, ['blogs','edit-blog'], true) ? 'active' : '' ?>" href="admin.php?section=blogs"><span class="icon">BL</span>Bai blog</a>
         <a class="<?= $section === 'new-blog' ? 'active' : '' ?>" href="admin.php?section=new-blog"><span class="icon">NB</span>Them blog</a>
+        <a class="<?= $section === 'ai-blog' ? 'active' : '' ?>" href="admin.php?section=ai-blog"><span class="icon">AI</span>AI dang blog</a>
         <div class="nav-label">Cau hinh</div>
         <a class="<?= $section === 'head-code' ? 'active' : '' ?>" href="admin.php?section=head-code"><span class="icon">HD</span>Code head trang chu</a>
         <a class="<?= $section === 'menu-tools' ? 'active' : '' ?>" href="admin.php?section=menu-tools"><span class="icon">MN</span>Cong cu menu</a>
@@ -1053,6 +1403,122 @@ if ($loggedIn && $editBlog) {
             </aside>
             </div>
           </form>
+        <?php endif; ?>
+
+        <?php if ($section === 'ai-blog'): ?>
+          <?php
+            $aiConfig = get_ai_config();
+            $aiQueue = get_ai_queue();
+            $apiKeyStatus = getenv('OPENAI_API_KEY') ? 'Dang dung OPENAI_API_KEY tu server' : mask_secret($aiConfig['api_key'] ?? '');
+            $cronUrl = 'admin.php?run_ai_queue=1&token=' . urlencode($aiConfig['cron_token'] ?? '');
+          ?>
+          <div class="section-title">
+            <div>
+              <h2>AI dang blog</h2>
+              <p>Nhap list tieu de, moi dong mot bai. He thong goi OpenAI, tao file trong Blog va chen card vao blog.html.</p>
+            </div>
+            <form method="post">
+              <input type="hidden" name="action" value="run_ai_queue_now">
+              <input type="hidden" name="run_limit" value="<?= h($aiConfig['daily_limit'] ?? 2) ?>">
+              <button class="btn primary" type="submit">Chay queue ngay</button>
+            </form>
+          </div>
+
+          <div class="grid-2">
+            <form class="panel" method="post">
+              <div class="panel-head"><h3>Them tieu de vao queue</h3></div>
+              <div class="panel-body">
+                <input type="hidden" name="action" value="add_ai_titles">
+                <div class="field">
+                  <label for="aiTitles">Danh sach tieu de</label>
+                  <textarea class="body" id="aiTitles" name="titles" placeholder="How to install Geometry Dash APK safely&#10;Best Geometry Dash beginner tips in 2026" required></textarea>
+                  <div class="hint">Moi dong la mot bai viet rieng. Bai se duoc dang theo gioi han moi ngay.</div>
+                </div>
+                <div class="field">
+                  <label for="runLimit">So bai xu ly ngay sau khi them</label>
+                  <input id="runLimit" type="number" name="run_limit" min="1" value="1">
+                </div>
+                <div class="field">
+                  <label><input type="checkbox" name="run_now" value="1"> Tao va dang ngay sau khi them</label>
+                </div>
+                <button class="btn primary" type="submit">Them vao queue</button>
+              </div>
+            </form>
+
+            <form class="panel" method="post">
+              <div class="panel-head"><h3>Cau hinh OpenAI</h3></div>
+              <div class="panel-body">
+                <input type="hidden" name="action" value="save_ai_config">
+                <div class="field">
+                  <label for="apiKey">OpenAI API key</label>
+                  <input id="apiKey" type="password" name="api_key" placeholder="<?= h($apiKeyStatus) ?>">
+                  <div class="hint">Nen dat bien moi truong <code>OPENAI_API_KEY</code>. Neu nhap o day, key duoc luu trong file <code>.admin-ai-config.json</code>.</div>
+                </div>
+                <div class="field">
+                  <label for="aiModel">Model</label>
+                  <input id="aiModel" name="model" value="<?= h($aiConfig['model'] ?? 'gpt-5.2') ?>">
+                </div>
+                <div class="field">
+                  <label for="dailyLimit">Gioi han dang moi ngay</label>
+                  <input id="dailyLimit" type="number" name="daily_limit" min="1" value="<?= h($aiConfig['daily_limit'] ?? 2) ?>">
+                </div>
+                <div class="field">
+                  <label for="aiCategory">Chuyen muc mac dinh</label>
+                  <input id="aiCategory" name="category" value="<?= h($aiConfig['category'] ?? 'Guide') ?>">
+                </div>
+                <div class="field">
+                  <label for="aiLanguage">Ngon ngu bai viet</label>
+                  <input id="aiLanguage" name="language" value="<?= h($aiConfig['language'] ?? 'English') ?>">
+                </div>
+                <div class="field">
+                  <label for="siteContext">Huong dan noi dung</label>
+                  <textarea id="siteContext" name="site_context"><?= h($aiConfig['site_context'] ?? '') ?></textarea>
+                </div>
+                <div class="field">
+                  <label>Cron URL</label>
+                  <input readonly value="<?= h($cronUrl) ?>">
+                  <div class="hint">Dat cron tren hosting goi URL nay moi ngay. Moi lan goi se dang toi da so bai con lai trong gioi han ngay.</div>
+                </div>
+                <button class="btn primary" type="submit">Luu cau hinh</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel" style="margin-top:16px;">
+            <div class="panel-head"><h3>Queue AI</h3><span class="hint"><?= count($aiQueue) ?> muc</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Tieu de</th><th>Trang thai</th><th>Slug</th><th>Ngay tao</th><th>Loi</th><th>Thao tac</th></tr></thead>
+                <tbody>
+                  <?php foreach (array_reverse($aiQueue) as $item): ?>
+                    <tr>
+                      <td><?= h($item['title'] ?? '') ?></td>
+                      <td><span class="status <?= h($item['status'] ?? 'pending') ?>"><?= h($item['status'] ?? 'pending') ?></span></td>
+                      <td>
+                        <?php if (!empty($item['slug'])): ?>
+                          <a href="./blog/<?= h($item['slug']) ?>" target="_blank"><?= h($item['slug']) ?></a>
+                        <?php endif; ?>
+                      </td>
+                      <td><?= h(substr((string) ($item['created_at'] ?? ''), 0, 16)) ?></td>
+                      <td><?= h($item['error'] ?? '') ?></td>
+                      <td>
+                        <?php if (in_array(($item['status'] ?? ''), ['error', 'running'], true)): ?>
+                          <form method="post">
+                            <input type="hidden" name="action" value="retry_ai_item">
+                            <input type="hidden" name="id" value="<?= h($item['id'] ?? '') ?>">
+                            <button class="btn" type="submit">Thu lai</button>
+                          </form>
+                        <?php endif; ?>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                  <?php if (!$aiQueue): ?>
+                    <tr><td colspan="6">Chua co tieu de nao trong queue AI.</td></tr>
+                  <?php endif; ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
         <?php endif; ?>
 
         <?php if ($section === 'head-code'): ?>
