@@ -1,5 +1,7 @@
 RewriteEngine On
 
+RewriteRule ^sitemap\.xml$ /sitemap.php [L]
+
 RewriteCond %{REQUEST_URI} ^/Home\.html$ [NC]
 RewriteRule ^(.*)$ https://geometrydashapk.games/ [R=301,L]
 

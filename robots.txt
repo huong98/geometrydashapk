@@ -1,3 +1,4 @@
 User-agent: *
-Disallow: /blog
+Disallow: /admin
+Disallow: /admin.php
 Sitemap: https://geometrydashapk.games/sitemap.xml
