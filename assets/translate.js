@@ -66,11 +66,18 @@ if (routeLanguage) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  const currentLanguage = document.querySelector(".language-picker-current");
+
   document.querySelectorAll("[data-language-route]").forEach(function (link) {
     const prefix = link.getAttribute("data-language-route");
+    const isActive = prefix === routePrefix || (!prefix && !routeLanguage);
 
     link.href = getLocalizedPath(prefix);
-    link.classList.toggle("active", prefix === routePrefix || (!prefix && !routeLanguage));
+    link.classList.toggle("active", isActive);
+
+    if (isActive && currentLanguage) {
+      currentLanguage.textContent = link.textContent;
+    }
 
     link.addEventListener("click", function () {
       setTranslateCookie(languageRoutes[prefix]);
